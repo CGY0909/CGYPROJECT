@@ -40,6 +40,31 @@
 						"type": "DelimitedTextReadSettings"
 					}
 				}
+			},
+			{
+				"name": "Save SoureFileNames Variable",
+				"description": "Save SoureFileNames Variable",
+				"type": "SetVariable",
+				"dependsOn": [
+					{
+						"activity": "Get Source FileNames",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "SourceFileNamesVariable",
+					"value": {
+						"value": "@activity('Get Source FileNames').output.itemName",
+						"type": "Expression"
+					}
+				}
 			}
 		],
 		"parameters": {
@@ -68,6 +93,11 @@
 			},
 			"TableName": {
 				"type": "string"
+			}
+		},
+		"variables": {
+			"SourceFileNamesVariable": {
+				"type": "Array"
 			}
 		},
 		"annotations": []
