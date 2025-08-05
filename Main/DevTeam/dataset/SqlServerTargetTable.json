@@ -1,0 +1,12 @@
+{
+	"name": "SqlServerTargetTable",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "SQLServerSelfhost",
+			"type": "LinkedServiceReference"
+		},
+		"annotations": [],
+		"type": "SqlServerTable",
+		"schema": []
+	}
+}

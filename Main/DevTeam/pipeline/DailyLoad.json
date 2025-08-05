@@ -147,14 +147,8 @@
 							],
 							"outputs": [
 								{
-									"referenceName": "SqlServerDataset",
-									"type": "DatasetReference",
-									"parameters": {
-										"SchemName": {
-											"value": "@pipeline().parameters.SchemaName",
-											"type": "Expression"
-										}
-									}
+									"referenceName": "SqlServerTargetTable",
+									"type": "DatasetReference"
 								}
 							]
 						}
