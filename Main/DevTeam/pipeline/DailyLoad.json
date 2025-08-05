@@ -148,7 +148,13 @@
 							"outputs": [
 								{
 									"referenceName": "SqlServerDataset",
-									"type": "DatasetReference"
+									"type": "DatasetReference",
+									"parameters": {
+										"SchemName": {
+											"value": "@pipeline().parameters.SchemaName",
+											"type": "Expression"
+										}
+									}
 								}
 							]
 						}
