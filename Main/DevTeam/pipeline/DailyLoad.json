@@ -1,0 +1,34 @@
+{
+	"name": "DailyLoad",
+	"properties": {
+		"parameters": {
+			"SourceContainer": {
+				"type": "string",
+				"defaultValue": "input"
+			},
+			"SourceFolder": {
+				"type": "string",
+				"defaultValue": "Source"
+			},
+			"SourceFile": {
+				"type": "array"
+			},
+			"TargetContainer": {
+				"type": "string",
+				"defaultValue": "output"
+			},
+			"TargetFolder": {
+				"type": "string",
+				"defaultValue": "Target"
+			},
+			"SchemaName": {
+				"type": "string",
+				"defaultValue": "dbo"
+			},
+			"TableName": {
+				"type": "string"
+			}
+		},
+		"annotations": []
+	}
+}
