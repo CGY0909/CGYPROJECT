@@ -1,0 +1,32 @@
+{
+	"name": "DailyFilesLoad",
+	"properties": {
+		"parameters": {
+			"SSMSServerName": {
+				"type": "string"
+			},
+			"SSMSUserName": {
+				"type": "string"
+			},
+			"SSMSDatabase": {
+				"type": "string"
+			},
+			"SSMSPassword": {
+				"type": "string"
+			},
+			"BlobContainerName": {
+				"type": "string"
+			},
+			"BlobFolder": {
+				"type": "string"
+			},
+			"BlobFileNames": {
+				"type": "array"
+			},
+			"TableSchemaName": {
+				"type": "string"
+			}
+		},
+		"annotations": []
+	}
+}
