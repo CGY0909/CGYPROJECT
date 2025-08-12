@@ -1,0 +1,36 @@
+{
+	"name": "SSMSLinkedService",
+	"type": "Microsoft.DataFactory/factories/linkedservices",
+	"properties": {
+		"description": "SSMSLinkedService",
+		"parameters": {
+			"ServerName": {
+				"type": "string"
+			},
+			"UserName": {
+				"type": "string"
+			},
+			"Password": {
+				"type": "string"
+			},
+			"Database": {
+				"type": "string"
+			}
+		},
+		"annotations": [],
+		"type": "SqlServer",
+		"typeProperties": {
+			"server": "@{linkedService().ServerName}",
+			"database": "@{linkedService().Database}",
+			"encrypt": "mandatory",
+			"trustServerCertificate": false,
+			"authenticationType": "SQL",
+			"userName": "@{linkedService().UserName}",
+			"password": "@{linkedService().Password}"
+		},
+		"connectVia": {
+			"referenceName": "selfhostedir",
+			"type": "IntegrationRuntimeReference"
+		}
+	}
+}
