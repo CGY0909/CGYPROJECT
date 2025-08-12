@@ -73,10 +73,12 @@
 				"type": "string"
 			},
 			"BlobContainerName": {
-				"type": "string"
+				"type": "string",
+				"defaultValue": "input"
 			},
 			"BlobFolder": {
-				"type": "string"
+				"type": "string",
+				"defaultValue": "Source"
 			},
 			"BlobFileNames": {
 				"type": "array"
