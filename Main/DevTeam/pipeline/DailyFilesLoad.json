@@ -1,6 +1,22 @@
 {
 	"name": "DailyFilesLoad",
 	"properties": {
+		"activities": [
+			{
+				"name": "Look_FilesareThereOrNot",
+				"description": "Look_FilesareThereOrNot",
+				"type": "Lookup",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 3,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": []
+			}
+		],
 		"parameters": {
 			"SSMSServerName": {
 				"type": "string"
