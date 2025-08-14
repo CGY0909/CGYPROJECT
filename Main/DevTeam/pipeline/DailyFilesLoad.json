@@ -109,7 +109,7 @@
 							"type": "Copy",
 							"dependsOn": [
 								{
-									"activity": "TruncateStagingTable",
+									"activity": "Truncate Stg Tables",
 									"dependencyConditions": [
 										"Succeeded"
 									]
@@ -214,9 +214,8 @@
 							]
 						},
 						{
-							"name": "TruncateStagingTable",
-							"description": "TruncateStagingTable",
-							"type": "SqlServerStoredProcedure",
+							"name": "Truncate Stg Tables",
+							"type": "Script",
 							"dependsOn": [
 								{
 									"activity": "Wait 5 sec",
@@ -233,9 +232,6 @@
 								"secureInput": false
 							},
 							"userProperties": [],
-							"typeProperties": {
-								"storedProcedureName": "truncate table customers_stg,truncate table orders_stg,truncate table payments_stg"
-							},
 							"linkedServiceName": {
 								"referenceName": "SSMSLinkedService",
 								"type": "LinkedServiceReference",
@@ -257,6 +253,15 @@
 										"type": "Expression"
 									}
 								}
+							},
+							"typeProperties": {
+								"scripts": [
+									{
+										"type": "Query",
+										"text": "TRUNCATE TABLE customers_stg;\nTRUNCATE TABLE orders_stg;\nTRUNCATE TABLE payments_stg;\n"
+									}
+								],
+								"scriptBlockExecutionTimeout": "02:00:00"
 							}
 						}
 					]
