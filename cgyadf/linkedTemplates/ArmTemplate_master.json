@@ -11,21 +11,21 @@
 			"type": "secureString",
 			"metadata": "Secure string for 'connectionString' of 'AzureBlobStorage'"
 		},
-		"SQLServerSelfhost_password": {
+		"BlobStrg_connectionString": {
 			"type": "secureString",
-			"metadata": "Secure string for 'password' of 'SQLServerSelfhost'"
+			"metadata": "Secure string for 'connectionString' of 'BlobStrg'"
 		},
-		"SQLServerSelfhost_properties_typeProperties_server": {
+		"SSMSLinkedService_properties_typeProperties_server": {
 			"type": "string",
-			"defaultValue": "DESKTOP-8OTJPKL\\CHUKKASQLSERVER"
+			"defaultValue": "@{linkedService().ServerName}"
 		},
-		"SQLServerSelfhost_properties_typeProperties_database": {
+		"SSMSLinkedService_properties_typeProperties_database": {
 			"type": "string",
-			"defaultValue": "azurelink"
+			"defaultValue": "@{linkedService().Database}"
 		},
-		"SQLServerSelfhost_properties_typeProperties_userName": {
+		"SSMSLinkedService_properties_typeProperties_userName": {
 			"type": "string",
-			"defaultValue": "sa"
+			"defaultValue": "@{linkedService().UserName}"
 		},
 		"containerUri": {
 			"type": "string",
@@ -57,17 +57,17 @@
 					"AzureBlobStorage_connectionString": {
 						"value": "[parameters('AzureBlobStorage_connectionString')]"
 					},
-					"SQLServerSelfhost_password": {
-						"value": "[parameters('SQLServerSelfhost_password')]"
+					"BlobStrg_connectionString": {
+						"value": "[parameters('BlobStrg_connectionString')]"
 					},
-					"SQLServerSelfhost_properties_typeProperties_server": {
-						"value": "[parameters('SQLServerSelfhost_properties_typeProperties_server')]"
+					"SSMSLinkedService_properties_typeProperties_server": {
+						"value": "[parameters('SSMSLinkedService_properties_typeProperties_server')]"
 					},
-					"SQLServerSelfhost_properties_typeProperties_database": {
-						"value": "[parameters('SQLServerSelfhost_properties_typeProperties_database')]"
+					"SSMSLinkedService_properties_typeProperties_database": {
+						"value": "[parameters('SSMSLinkedService_properties_typeProperties_database')]"
 					},
-					"SQLServerSelfhost_properties_typeProperties_userName": {
-						"value": "[parameters('SQLServerSelfhost_properties_typeProperties_userName')]"
+					"SSMSLinkedService_properties_typeProperties_userName": {
+						"value": "[parameters('SSMSLinkedService_properties_typeProperties_userName')]"
 					}
 				}
 			},

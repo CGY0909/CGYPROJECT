@@ -11,21 +11,21 @@
 			"type": "secureString",
 			"metadata": "Secure string for 'connectionString' of 'AzureBlobStorage'"
 		},
-		"SQLServerSelfhost_password": {
+		"BlobStrg_connectionString": {
 			"type": "secureString",
-			"metadata": "Secure string for 'password' of 'SQLServerSelfhost'"
+			"metadata": "Secure string for 'connectionString' of 'BlobStrg'"
 		},
-		"SQLServerSelfhost_properties_typeProperties_server": {
+		"SSMSLinkedService_properties_typeProperties_server": {
 			"type": "string",
-			"defaultValue": "DESKTOP-8OTJPKL\\CHUKKASQLSERVER"
+			"defaultValue": "@{linkedService().ServerName}"
 		},
-		"SQLServerSelfhost_properties_typeProperties_database": {
+		"SSMSLinkedService_properties_typeProperties_database": {
 			"type": "string",
-			"defaultValue": "azurelink"
+			"defaultValue": "@{linkedService().Database}"
 		},
-		"SQLServerSelfhost_properties_typeProperties_userName": {
+		"SSMSLinkedService_properties_typeProperties_userName": {
 			"type": "string",
-			"defaultValue": "sa"
+			"defaultValue": "@{linkedService().UserName}"
 		}
 	},
 	"variables": {
@@ -33,19 +33,581 @@
 	},
 	"resources": [
 		{
-			"name": "[concat(parameters('factoryName'), '/SqlServerDataset')]",
+			"name": "[concat(parameters('factoryName'), '/DailyFilesLoad')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "GetFileMetaData",
+						"description": "GetFileMetaData",
+						"type": "GetMetadata",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"dataset": {
+								"referenceName": "BlobFileDataset",
+								"type": "DatasetReference",
+								"parameters": {
+									"Container": {
+										"value": "@pipeline().parameters.BlobContainerName",
+										"type": "Expression"
+									},
+									"Folder": {
+										"value": "@pipeline().parameters.BlobFolder",
+										"type": "Expression"
+									}
+								}
+							},
+							"fieldList": [
+								"childItems"
+							],
+							"storeSettings": {
+								"type": "AzureBlobStorageReadSettings",
+								"recursive": true,
+								"enablePartitionDiscovery": false
+							},
+							"formatSettings": {
+								"type": "BinaryReadSettings"
+							}
+						}
+					},
+					{
+						"name": "SaveFileNames",
+						"type": "SetVariable",
+						"dependsOn": [
+							{
+								"activity": "Filter Latest Files",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [
+							{
+								"name": "FileNames",
+								"value": "Saved"
+							}
+						],
+						"typeProperties": {
+							"variableName": "DailyFileNames",
+							"value": {
+								"value": "@activity('Filter Latest Files').output.value",
+								"type": "Expression"
+							}
+						}
+					},
+					{
+						"name": "ForEachFileLoad",
+						"description": "ForEachFileLoad",
+						"type": "ForEach",
+						"dependsOn": [
+							{
+								"activity": "Truncate Stg Tables_copy1",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"items": {
+								"value": "@variables('DailyFileNames')",
+								"type": "Expression"
+							},
+							"isSequential": false,
+							"batchCount": 2,
+							"activities": [
+								{
+									"name": "Wait 5 sec",
+									"description": "Wait 5 sec",
+									"type": "Wait",
+									"dependsOn": [],
+									"userProperties": [],
+									"typeProperties": {
+										"waitTimeInSeconds": 1
+									}
+								},
+								{
+									"name": "Copy data to staging tables",
+									"description": "Copy data to staging tables",
+									"type": "Copy",
+									"dependsOn": [
+										{
+											"activity": "Wait 5 sec",
+											"dependencyConditions": [
+												"Succeeded"
+											]
+										}
+									],
+									"policy": {
+										"timeout": "0.12:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [
+										{
+											"name": "Source",
+											"value": "@{pipeline().parameters.BlobContainerName}/@{pipeline().parameters.BlobFolder}/@{variables('DailyFileNames')}"
+										},
+										{
+											"name": "Destination",
+											"value": "@{pipeline().parameters.TableSchemaName}.@{item().name}"
+										}
+									],
+									"typeProperties": {
+										"source": {
+											"type": "DelimitedTextSource",
+											"storeSettings": {
+												"type": "AzureBlobStorageReadSettings",
+												"recursive": true,
+												"enablePartitionDiscovery": false
+											},
+											"formatSettings": {
+												"type": "DelimitedTextReadSettings"
+											}
+										},
+										"sink": {
+											"type": "SqlServerSink",
+											"writeBehavior": "insert",
+											"sqlWriterUseTableLock": false,
+											"tableOption": "autoCreate"
+										},
+										"enableStaging": false,
+										"translator": {
+											"type": "TabularTranslator",
+											"typeConversion": true,
+											"typeConversionSettings": {
+												"allowDataTruncation": true,
+												"treatBooleanAsNumber": false
+											}
+										}
+									},
+									"inputs": [
+										{
+											"referenceName": "SelectedFilesDailyLoadDatasetSource",
+											"type": "DatasetReference",
+											"parameters": {
+												"Container": {
+													"value": "@pipeline().parameters.BlobContainerName",
+													"type": "Expression"
+												},
+												"Folder": {
+													"value": "@pipeline().parameters.BlobFolder",
+													"type": "Expression"
+												},
+												"fileName": {
+													"value": "@item().name",
+													"type": "Expression"
+												}
+											}
+										}
+									],
+									"outputs": [
+										{
+											"referenceName": "SqlServerTableStaging",
+											"type": "DatasetReference",
+											"parameters": {
+												"Schema": {
+													"value": "@pipeline().parameters.TableSchemaName",
+													"type": "Expression"
+												},
+												"TableName": {
+													"value": "@concat(split(item().name, '_')[0], '_stg')",
+													"type": "Expression"
+												},
+												"servername": {
+													"value": "@pipeline().parameters.SSMSServerName",
+													"type": "Expression"
+												},
+												"username": {
+													"value": "@pipeline().parameters.SSMSUserName",
+													"type": "Expression"
+												},
+												"password": {
+													"value": "@pipeline().parameters.SSMSPassword",
+													"type": "Expression"
+												},
+												"databasename": {
+													"value": "@pipeline().parameters.SSMSDatabase",
+													"type": "Expression"
+												}
+											}
+										}
+									]
+								}
+							]
+						}
+					},
+					{
+						"name": "Filter Latest Files",
+						"type": "Filter",
+						"dependsOn": [
+							{
+								"activity": "GetFileMetaData",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"items": {
+								"value": "@activity('GetFileMetaData').output.childItems",
+								"type": "Expression"
+							},
+							"condition": {
+								"value": "@contains(item().name, formatDateTime(utcNow(),'yyyyMMdd'))",
+								"type": "Expression"
+							}
+						}
+					},
+					{
+						"name": "Truncate Stg Tables_copy1",
+						"type": "Script",
+						"dependsOn": [
+							{
+								"activity": "SaveFileNames",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"linkedServiceName": {
+							"referenceName": "SSMSLinkedService",
+							"type": "LinkedServiceReference",
+							"parameters": {
+								"ServerName": {
+									"value": "@pipeline().parameters.SSMSServerName",
+									"type": "Expression"
+								},
+								"UserName": {
+									"value": "@pipeline().parameters.SSMSUserName",
+									"type": "Expression"
+								},
+								"Password": {
+									"value": "@pipeline().parameters.SSMSPassword",
+									"type": "Expression"
+								},
+								"Database": {
+									"value": "@pipeline().parameters.SSMSDatabase",
+									"type": "Expression"
+								}
+							}
+						},
+						"typeProperties": {
+							"scripts": [
+								{
+									"type": "Query",
+									"text": "TRUNCATE TABLE customers_stg;\nTRUNCATE TABLE orders_stg;\nTRUNCATE TABLE payments_stg;\n"
+								}
+							],
+							"scriptBlockExecutionTimeout": "02:00:00"
+						}
+					},
+					{
+						"name": "Delete Files",
+						"type": "Delete",
+						"dependsOn": [
+							{
+								"activity": "ForEachFileLoad",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"dataset": {
+								"referenceName": "Deleted_files",
+								"type": "DatasetReference",
+								"parameters": {
+									"container": {
+										"value": "@pipeline().parameters.BlobContainerName",
+										"type": "Expression"
+									},
+									"folder": {
+										"value": "@pipeline().parameters.BlobFolder",
+										"type": "Expression"
+									},
+									"files": {
+										"value": "@string(activity('Filter Latest Files').output.value)",
+										"type": "Expression"
+									}
+								}
+							},
+							"logStorageSettings": {
+								"linkedServiceName": {
+									"referenceName": "BlobStrg",
+									"type": "LinkedServiceReference"
+								}
+							},
+							"enableLogging": true,
+							"storeSettings": {
+								"type": "AzureBlobStorageReadSettings",
+								"recursive": true,
+								"enablePartitionDiscovery": false
+							}
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {}
+				},
+				"parameters": {
+					"SSMSServerName": {
+						"type": "string",
+						"defaultValue": "DESKTOP-8OTJPKL\\CHUKKASQLSERVER"
+					},
+					"SSMSUserName": {
+						"type": "string",
+						"defaultValue": "sa"
+					},
+					"SSMSDatabase": {
+						"type": "string",
+						"defaultValue": "DEV_Practice"
+					},
+					"SSMSPassword": {
+						"type": "string",
+						"defaultValue": "Chukka@20904226"
+					},
+					"BlobContainerName": {
+						"type": "string",
+						"defaultValue": "input"
+					},
+					"BlobFolder": {
+						"type": "string",
+						"defaultValue": "Source"
+					},
+					"BlobFileNames": {
+						"type": "array"
+					},
+					"TableSchemaName": {
+						"type": "string",
+						"defaultValue": "dbo"
+					}
+				},
+				"variables": {
+					"DailyFileNames": {
+						"type": "Array"
+					},
+					"DebugItem": {
+						"type": "String"
+					}
+				},
+				"annotations": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/datasets/BlobFileDataset')]",
+				"[concat(variables('factoryId'), '/linkedServices/SSMSLinkedService')]",
+				"[concat(variables('factoryId'), '/datasets/Deleted_files')]",
+				"[concat(variables('factoryId'), '/linkedServices/BlobStrg')]",
+				"[concat(variables('factoryId'), '/datasets/SelectedFilesDailyLoadDatasetSource')]",
+				"[concat(variables('factoryId'), '/datasets/SqlServerTableStaging')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/BlobFileDataset')]",
 			"type": "Microsoft.DataFactory/factories/datasets",
 			"apiVersion": "2018-06-01",
 			"properties": {
 				"linkedServiceName": {
-					"referenceName": "SQLServerSelfhost",
+					"referenceName": "BlobStrg",
 					"type": "LinkedServiceReference"
 				},
 				"parameters": {
-					"SchemName": {
+					"Container": {
+						"type": "string"
+					},
+					"Folder": {
+						"type": "string"
+					}
+				},
+				"annotations": [],
+				"type": "Binary",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobStorageLocation",
+						"folderPath": {
+							"value": "@dataset().Folder",
+							"type": "Expression"
+						},
+						"container": {
+							"value": "@dataset().Container",
+							"type": "Expression"
+						}
+					}
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/BlobStrg')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/Deleted_files')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "BlobStrg",
+					"type": "LinkedServiceReference"
+				},
+				"parameters": {
+					"container": {
+						"type": "string"
+					},
+					"folder": {
+						"type": "string"
+					},
+					"files": {
+						"type": "string"
+					}
+				},
+				"annotations": [],
+				"type": "Binary",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobStorageLocation",
+						"fileName": {
+							"value": "@dataset().files",
+							"type": "Expression"
+						},
+						"folderPath": {
+							"value": "@dataset().folder",
+							"type": "Expression"
+						},
+						"container": {
+							"value": "@dataset().container",
+							"type": "Expression"
+						}
+					}
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/BlobStrg')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/SelectedFilesDailyLoadDatasetSource')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "BlobStrg",
+					"type": "LinkedServiceReference"
+				},
+				"parameters": {
+					"Container": {
+						"type": "string"
+					},
+					"Folder": {
+						"type": "string"
+					},
+					"fileName": {
+						"type": "string"
+					}
+				},
+				"annotations": [],
+				"type": "DelimitedText",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobStorageLocation",
+						"fileName": {
+							"value": "@dataset().fileName",
+							"type": "Expression"
+						},
+						"folderPath": {
+							"value": "@dataset().Folder",
+							"type": "Expression"
+						},
+						"container": {
+							"value": "@dataset().Container",
+							"type": "Expression"
+						}
+					},
+					"columnDelimiter": ",",
+					"escapeChar": "\"",
+					"firstRowAsHeader": true,
+					"quoteChar": "\""
+				},
+				"schema": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/BlobStrg')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/SqlServerTableStaging')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "SSMSLinkedService",
+					"type": "LinkedServiceReference",
+					"parameters": {
+						"ServerName": {
+							"value": "@dataset().servername",
+							"type": "Expression"
+						},
+						"UserName": {
+							"value": "@dataset().username",
+							"type": "Expression"
+						},
+						"Password": {
+							"value": "@dataset().password",
+							"type": "Expression"
+						},
+						"Database": {
+							"value": "@dataset().databasename",
+							"type": "Expression"
+						}
+					}
+				},
+				"parameters": {
+					"Schema": {
 						"type": "string"
 					},
 					"TableName": {
+						"type": "string"
+					},
+					"servername": {
+						"type": "string"
+					},
+					"username": {
+						"type": "string"
+					},
+					"password": {
+						"type": "string"
+					},
+					"databasename": {
 						"type": "string"
 					}
 				},
@@ -54,7 +616,7 @@
 				"schema": [],
 				"typeProperties": {
 					"schema": {
-						"value": "@dataset().SchemName",
+						"value": "@dataset().Schema",
 						"type": "Expression"
 					},
 					"table": {
@@ -64,105 +626,7 @@
 				}
 			},
 			"dependsOn": [
-				"[concat(variables('factoryId'), '/linkedServices/SQLServerSelfhost')]"
-			]
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/blobstoragesource')]",
-			"type": "Microsoft.DataFactory/factories/datasets",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"linkedServiceName": {
-					"referenceName": "AzureBlobStorage",
-					"type": "LinkedServiceReference"
-				},
-				"parameters": {
-					"SourceContainer": {
-						"type": "string"
-					},
-					"SourceFolder": {
-						"type": "string"
-					},
-					"SourceFile": {
-						"type": "string"
-					}
-				},
-				"annotations": [],
-				"type": "DelimitedText",
-				"typeProperties": {
-					"location": {
-						"type": "AzureBlobStorageLocation",
-						"fileName": {
-							"value": "@dataset().SourceFile",
-							"type": "Expression"
-						},
-						"folderPath": {
-							"value": "@dataset().SourceFolder",
-							"type": "Expression"
-						},
-						"container": {
-							"value": "@dataset().SourceContainer",
-							"type": "Expression"
-						}
-					},
-					"columnDelimiter": ",",
-					"escapeChar": "\"",
-					"firstRowAsHeader": true,
-					"quoteChar": "\""
-				},
-				"schema": []
-			},
-			"dependsOn": [
-				"[concat(variables('factoryId'), '/linkedServices/AzureBlobStorage')]"
-			]
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/blobstoragetarget')]",
-			"type": "Microsoft.DataFactory/factories/datasets",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"linkedServiceName": {
-					"referenceName": "AzureBlobStorage",
-					"type": "LinkedServiceReference"
-				},
-				"parameters": {
-					"TargetContainerName": {
-						"type": "string"
-					},
-					"FolderName": {
-						"type": "string"
-					},
-					"FileName": {
-						"type": "string"
-					}
-				},
-				"annotations": [],
-				"type": "DelimitedText",
-				"typeProperties": {
-					"location": {
-						"type": "AzureBlobStorageLocation",
-						"fileName": {
-							"value": "@dataset().FileName",
-							"type": "Expression"
-						},
-						"folderPath": {
-							"value": "@dataset().FolderName",
-							"type": "Expression"
-						},
-						"container": {
-							"value": "@dataset().TargetContainerName",
-							"type": "Expression"
-						}
-					},
-					"columnDelimiter": ",",
-					"escapeChar": "\"",
-					"firstRowAsHeader": true,
-					"quoteChar": "\""
-				},
-				"schema": []
-			},
-			"dependsOn": [
-				"[concat(variables('factoryId'), '/linkedServices/AzureBlobStorage')]"
+				"[concat(variables('factoryId'), '/linkedServices/SSMSLinkedService')]"
 			]
 		},
 		{
@@ -179,24 +643,49 @@
 			"dependsOn": []
 		},
 		{
-			"name": "[concat(parameters('factoryName'), '/SQLServerSelfhost')]",
+			"name": "[concat(parameters('factoryName'), '/BlobStrg')]",
 			"type": "Microsoft.DataFactory/factories/linkedServices",
 			"apiVersion": "2018-06-01",
 			"properties": {
-				"description": "SQLServerSelfhost",
+				"description": "Connect Blob Storage",
+				"annotations": [],
+				"type": "AzureBlobStorage",
+				"typeProperties": {
+					"connectionString": "[parameters('BlobStrg_connectionString')]"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/SSMSLinkedService')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"description": "SSMSLinkedService",
+				"parameters": {
+					"ServerName": {
+						"type": "string"
+					},
+					"UserName": {
+						"type": "string"
+					},
+					"Password": {
+						"type": "string"
+					},
+					"Database": {
+						"type": "string"
+					}
+				},
 				"annotations": [],
 				"type": "SqlServer",
 				"typeProperties": {
-					"server": "[parameters('SQLServerSelfhost_properties_typeProperties_server')]",
-					"database": "[parameters('SQLServerSelfhost_properties_typeProperties_database')]",
+					"server": "[parameters('SSMSLinkedService_properties_typeProperties_server')]",
+					"database": "[parameters('SSMSLinkedService_properties_typeProperties_database')]",
 					"encrypt": "mandatory",
 					"trustServerCertificate": false,
 					"authenticationType": "SQL",
-					"userName": "[parameters('SQLServerSelfhost_properties_typeProperties_userName')]",
-					"password": {
-						"type": "SecureString",
-						"value": "[parameters('SQLServerSelfhost_password')]"
-					}
+					"userName": "[parameters('SSMSLinkedService_properties_typeProperties_userName')]",
+					"password": "@{linkedService().Password}"
 				},
 				"connectVia": {
 					"referenceName": "selfhostedir",

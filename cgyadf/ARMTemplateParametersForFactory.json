@@ -8,17 +8,17 @@
 		"AzureBlobStorage_connectionString": {
 			"value": ""
 		},
-		"SQLServerSelfhost_password": {
+		"BlobStrg_connectionString": {
 			"value": ""
 		},
-		"SQLServerSelfhost_properties_typeProperties_server": {
-			"value": "DESKTOP-8OTJPKL\\CHUKKASQLSERVER"
+		"SSMSLinkedService_properties_typeProperties_server": {
+			"value": "@{linkedService().ServerName}"
 		},
-		"SQLServerSelfhost_properties_typeProperties_database": {
-			"value": "azurelink"
+		"SSMSLinkedService_properties_typeProperties_database": {
+			"value": "@{linkedService().Database}"
 		},
-		"SQLServerSelfhost_properties_typeProperties_userName": {
-			"value": "sa"
+		"SSMSLinkedService_properties_typeProperties_userName": {
+			"value": "@{linkedService().UserName}"
 		}
 	}
 }
