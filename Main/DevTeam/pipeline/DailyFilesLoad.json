@@ -109,7 +109,7 @@
 							"type": "Copy",
 							"dependsOn": [
 								{
-									"activity": "Wait 5 sec",
+									"activity": "debugvariable",
 									"dependencyConditions": [
 										"Succeeded"
 									]
@@ -122,7 +122,16 @@
 								"secureOutput": false,
 								"secureInput": false
 							},
-							"userProperties": [],
+							"userProperties": [
+								{
+									"name": "Source",
+									"value": "@{pipeline().parameters.BlobContainerName}/@{pipeline().parameters.BlobFolder}/@{variables('DailyFileNames')}"
+								},
+								{
+									"name": "Destination",
+									"value": "@{pipeline().parameters.TableSchemaName}.@{item().name}"
+								}
+							],
 							"typeProperties": {
 								"source": {
 									"type": "DelimitedTextSource",
@@ -174,9 +183,59 @@
 							"outputs": [
 								{
 									"referenceName": "SqlServerTableStaging",
-									"type": "DatasetReference"
+									"type": "DatasetReference",
+									"parameters": {
+										"Schema": {
+											"value": "@pipeline().parameters.TableSchemaName",
+											"type": "Expression"
+										},
+										"TableName": {
+											"value": "@variables('DebugItem')",
+											"type": "Expression"
+										},
+										"servername": {
+											"value": "@pipeline().parameters.SSMSServerName",
+											"type": "Expression"
+										},
+										"username": {
+											"value": "@pipeline().parameters.SSMSUserName",
+											"type": "Expression"
+										},
+										"password": {
+											"value": "@pipeline().parameters.SSMSPassword",
+											"type": "Expression"
+										},
+										"databasename": {
+											"value": "@pipeline().parameters.SSMSDatabase",
+											"type": "Expression"
+										}
+									}
 								}
 							]
+						},
+						{
+							"name": "debugvariable",
+							"type": "SetVariable",
+							"dependsOn": [
+								{
+									"activity": "Wait 5 sec",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "DebugItem",
+								"value": {
+									"value": "@string(item())",
+									"type": "Expression"
+								}
+							}
 						}
 					]
 				}
@@ -207,16 +266,20 @@
 		],
 		"parameters": {
 			"SSMSServerName": {
-				"type": "string"
+				"type": "string",
+				"defaultValue": "DESKTOP-8OTJPKL\\CHUKKASQLSERVER"
 			},
 			"SSMSUserName": {
-				"type": "string"
+				"type": "string",
+				"defaultValue": "sa"
 			},
 			"SSMSDatabase": {
-				"type": "string"
+				"type": "string",
+				"defaultValue": "DEV_Practice"
 			},
 			"SSMSPassword": {
-				"type": "string"
+				"type": "string",
+				"defaultValue": "Chukka@20904226"
 			},
 			"BlobContainerName": {
 				"type": "string",
@@ -230,12 +293,16 @@
 				"type": "array"
 			},
 			"TableSchemaName": {
-				"type": "string"
+				"type": "string",
+				"defaultValue": "dbo"
 			}
 		},
 		"variables": {
 			"DailyFileNames": {
 				"type": "Array"
+			},
+			"DebugItem": {
+				"type": "String"
 			}
 		},
 		"annotations": []
