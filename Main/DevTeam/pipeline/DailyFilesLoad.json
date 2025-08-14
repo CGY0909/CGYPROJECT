@@ -109,7 +109,7 @@
 							"type": "Copy",
 							"dependsOn": [
 								{
-									"activity": "debugvariable",
+									"activity": "Wait 5 sec",
 									"dependencyConditions": [
 										"Succeeded"
 									]
@@ -174,7 +174,7 @@
 											"type": "Expression"
 										},
 										"fileName": {
-											"value": "@variables('DailyFileNames')",
+											"value": "@item().name",
 											"type": "Expression"
 										}
 									}
@@ -190,7 +190,7 @@
 											"type": "Expression"
 										},
 										"TableName": {
-											"value": "@variables('DebugItem')",
+											"value": "@concat(split(item().name, '_')[0], '_stg')",
 											"type": "Expression"
 										},
 										"servername": {
@@ -212,30 +212,6 @@
 									}
 								}
 							]
-						},
-						{
-							"name": "debugvariable",
-							"type": "SetVariable",
-							"dependsOn": [
-								{
-									"activity": "Wait 5 sec",
-									"dependencyConditions": [
-										"Succeeded"
-									]
-								}
-							],
-							"policy": {
-								"secureOutput": false,
-								"secureInput": false
-							},
-							"userProperties": [],
-							"typeProperties": {
-								"variableName": "DebugItem",
-								"value": {
-									"value": "@string(item())",
-									"type": "Expression"
-								}
-							}
 						}
 					]
 				}
