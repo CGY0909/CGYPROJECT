@@ -3,22 +3,6 @@
 	"properties": {
 		"activities": [
 			{
-				"name": "Look_FilesareThereOrNot",
-				"description": "Look_FilesareThereOrNot",
-				"type": "Lookup",
-				"state": "Inactive",
-				"onInactiveMarkAs": "Succeeded",
-				"dependsOn": [],
-				"policy": {
-					"timeout": "0.12:00:00",
-					"retry": 3,
-					"retryIntervalInSeconds": 30,
-					"secureOutput": false,
-					"secureInput": false
-				},
-				"userProperties": []
-			},
-			{
 				"name": "GetFileMetaData",
 				"description": "GetFileMetaData",
 				"type": "GetMetadata",
@@ -51,10 +35,172 @@
 					],
 					"storeSettings": {
 						"type": "AzureBlobStorageReadSettings",
+						"recursive": true,
 						"enablePartitionDiscovery": false
 					},
 					"formatSettings": {
 						"type": "BinaryReadSettings"
+					}
+				}
+			},
+			{
+				"name": "SaveFileNames",
+				"type": "SetVariable",
+				"dependsOn": [
+					{
+						"activity": "Filter Latest Files",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [
+					{
+						"name": "FileNames",
+						"value": "Saved"
+					}
+				],
+				"typeProperties": {
+					"variableName": "DailyFileNames",
+					"value": {
+						"value": "@activity('Filter Latest Files').output.value",
+						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "ForEachFileLoad",
+				"description": "ForEachFileLoad",
+				"type": "ForEach",
+				"dependsOn": [
+					{
+						"activity": "SaveFileNames",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"items": {
+						"value": "@variables('DailyFileNames')",
+						"type": "Expression"
+					},
+					"isSequential": false,
+					"batchCount": 2,
+					"activities": [
+						{
+							"name": "Wait 5 sec",
+							"description": "Wait 5 sec",
+							"type": "Wait",
+							"dependsOn": [],
+							"userProperties": [],
+							"typeProperties": {
+								"waitTimeInSeconds": 1
+							}
+						},
+						{
+							"name": "Copy data to staging tables",
+							"description": "Copy data to staging tables",
+							"type": "Copy",
+							"dependsOn": [
+								{
+									"activity": "Wait 5 sec",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "DelimitedTextSource",
+									"storeSettings": {
+										"type": "AzureBlobStorageReadSettings",
+										"recursive": true,
+										"enablePartitionDiscovery": false
+									},
+									"formatSettings": {
+										"type": "DelimitedTextReadSettings"
+									}
+								},
+								"sink": {
+									"type": "SqlServerSink",
+									"writeBehavior": "insert",
+									"sqlWriterUseTableLock": false,
+									"tableOption": "autoCreate"
+								},
+								"enableStaging": false,
+								"translator": {
+									"type": "TabularTranslator",
+									"typeConversion": true,
+									"typeConversionSettings": {
+										"allowDataTruncation": true,
+										"treatBooleanAsNumber": false
+									}
+								}
+							},
+							"inputs": [
+								{
+									"referenceName": "SelectedFilesDailyLoadDatasetSource",
+									"type": "DatasetReference",
+									"parameters": {
+										"Container": {
+											"value": "@pipeline().parameters.BlobContainerName",
+											"type": "Expression"
+										},
+										"Folder": {
+											"value": "@pipeline().parameters.BlobFolder",
+											"type": "Expression"
+										},
+										"fileName": {
+											"value": "@variables('DailyFileNames')",
+											"type": "Expression"
+										}
+									}
+								}
+							],
+							"outputs": [
+								{
+									"referenceName": "SqlServerTableStaging",
+									"type": "DatasetReference"
+								}
+							]
+						}
+					]
+				}
+			},
+			{
+				"name": "Filter Latest Files",
+				"type": "Filter",
+				"dependsOn": [
+					{
+						"activity": "GetFileMetaData",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"items": {
+						"value": "@activity('GetFileMetaData').output.childItems",
+						"type": "Expression"
+					},
+					"condition": {
+						"value": "@contains(item().name, formatDateTime(utcNow(),'yyyyMMdd'))",
+						"type": "Expression"
 					}
 				}
 			}
@@ -85,6 +231,11 @@
 			},
 			"TableSchemaName": {
 				"type": "string"
+			}
+		},
+		"variables": {
+			"DailyFileNames": {
+				"type": "Array"
 			}
 		},
 		"annotations": []
