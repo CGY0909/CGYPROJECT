@@ -78,7 +78,7 @@
 				"type": "ForEach",
 				"dependsOn": [
 					{
-						"activity": "SaveFileNames",
+						"activity": "Truncate Stg Tables_copy1",
 						"dependencyConditions": [
 							"Succeeded"
 						]
@@ -242,9 +242,14 @@
 			{
 				"name": "Truncate Stg Tables_copy1",
 				"type": "Script",
-				"state": "Inactive",
-				"onInactiveMarkAs": "Succeeded",
-				"dependsOn": [],
+				"dependsOn": [
+					{
+						"activity": "SaveFileNames",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
 				"policy": {
 					"timeout": "0.12:00:00",
 					"retry": 0,
@@ -307,7 +312,27 @@
 				"typeProperties": {
 					"dataset": {
 						"referenceName": "Deleted_files",
-						"type": "DatasetReference"
+						"type": "DatasetReference",
+						"parameters": {
+							"container": {
+								"value": "@pipeline().parameters.BlobContainerName",
+								"type": "Expression"
+							},
+							"folder": {
+								"value": "@pipeline().parameters.BlobFolder",
+								"type": "Expression"
+							},
+							"files": {
+								"value": "@string(activity('Filter Latest Files').output.value)",
+								"type": "Expression"
+							}
+						}
+					},
+					"logStorageSettings": {
+						"linkedServiceName": {
+							"referenceName": "BlobStrg",
+							"type": "LinkedServiceReference"
+						}
 					},
 					"enableLogging": true,
 					"storeSettings": {
